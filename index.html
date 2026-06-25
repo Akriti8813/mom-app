@@ -847,10 +847,10 @@
 </footer>
 
 <script>
-  /* ── SIGNUP HANDLER ──────────────────────────────────────── */
-  // Collects emails into localStorage for you to retrieve
-  function handleSignup(inputId, successId) {
+  /* ── SIGNUP HANDLER — Live Formspree ─────────────────────── */
+  async function handleSignup(inputId, successId) {
     const input = document.getElementById(inputId);
+    const btn   = input.parentElement.querySelector('button');
     const email = input.value.trim();
 
     if (!email || !email.includes('@') || !email.includes('.')) {
@@ -867,18 +867,41 @@
       return;
     }
 
-    // Save to localStorage
-    const existing = JSON.parse(localStorage.getItem('mom_signups') || '[]');
-    if (!existing.includes(email)) {
-      existing.push(email);
-      localStorage.setItem('mom_signups', JSON.stringify(existing));
-    }
+    // Loading state
+    const originalText = btn.textContent;
+    btn.textContent = 'Joining...';
+    btn.disabled = true;
+    btn.style.opacity = '0.75';
 
-    // Show success
-    const box = input.parentElement;
-    box.style.display = 'none';
-    const msg = document.getElementById(successId);
-    msg.style.display = 'block';
+    try {
+      const res = await fetch('https://formspree.io/f/mreweqyd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          email: email,
+          source: inputId === 'hero-email' ? 'hero section' : 'footer section'
+        })
+      });
+
+      if (res.ok) {
+        // Success — hide form, show thank you message
+        const box = input.parentElement;
+        box.style.display = 'none';
+        const msg = document.getElementById(successId);
+        msg.style.display = 'block';
+      } else {
+        throw new Error('server error');
+      }
+    } catch(err) {
+      // Error — reset button, show error hint
+      btn.textContent = originalText;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      input.style.borderColor = '#d4718e';
+      input.style.boxShadow = '0 0 0 3px rgba(212,113,142,0.2)';
+      input.placeholder = 'Something went wrong — please try again';
+      input.value = '';
+    }
   }
 
   function scrollToSignup() {
