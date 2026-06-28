@@ -1,1 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOM — Mind Over Mess</title>
+  <meta name="description" content="Your personal companion for mental well-being, skill growth, and academic success." />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --ink:      #0f0f11;
+      --paper:    #faf7f2;
+      --warm:     #f5ede0;
+      --peach:    #e8a87c;
+      --blush:    #d4718e;
+      --sage:     #7aab8a;
+      --lavender: #8b7fb8;
+      --muted:    #7a7670;
+      --border:   #e0d8ce;
+      --display:  'DM Serif Display', serif;
+      --body:     'Inter', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; min-height: 100vh; }
 
+    /* ── PAGES ── */
+    .page { display: none; min-height: 100vh; }
+    .page.active { display: flex; }
+
+    /* ── AUTH PAGE ── */
+    #auth-page {
+      align-items: center; justify-content: center;
+      background: var(--paper); padding: 24px;
+      flex-direction: column;
+    }
+    .auth-card {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 24px; padding: 44px 40px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.07);
+    }
+    .auth-logo {
+      font-family: var(--display); font-size: 2rem;
+      letter-spacing: -0.03em; text-align: center;
+      margin-bottom: 6px;
+    }
+    .auth-logo span { color: var(--blush); }
+    .auth-tagline { text-align: center; color: var(--muted); font-size: 0.875rem; margin-bottom: 36px; }
+    .auth-tabs { display: flex; background: var(--warm); border-radius: 12px; padding: 4px; margin-bottom: 28px; }
+    .auth-tab {
+      flex: 1; padding: 9px; border: none; background: transparent;
+      border-radius: 9px; font-family: var(--body); font-size: 0.875rem;
+      font-weight: 500; cursor: pointer; color: var(--muted);
+      transition: all 0.2s;
+    }
+    .auth-tab.active { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--ink); margin-bottom: 6px; }
+    .form-input {
+      width: 100%; padding: 12px 16px; border: 1.5px solid var(--border);
+      border-radius: 12px; font-family: var(--body); font-size: 0.95rem;
+      color: var(--ink); background: var(--paper); outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus { border-color: var(--peach); box-shadow: 0 0 0 3px rgba(232,168,124,0.18); }
+    .form-input::placeholder { color: #c0b8b0; }
+    .btn-auth {
+      width: 100%; padding: 13px; border-radius: 100px;
+      background: var(--blush); color: #fff; border: none;
+      font-family: var(--body); font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; margin-top: 6px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(212,113,142,0.3);
+    }
+    .btn-auth:hover { background: #c45d7a; transform: translateY(-1px); }
+    .btn-auth:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .auth-error {
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;
+      padding: 10px 14px; font-size: 0.82rem; color: #b91c1c;
+      margin-bottom: 16px; display: none;
+    }
+    .auth-success {
+      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+      padding: 10px 14px; font-size: 0.82rem; color: #15803d;
+      margin-bottom: 16px; display: none;
+    }
+    .auth-divider { text-align: center; font-size: 0.78rem; color: var(--muted); margin: 20px 0 0; }
+
+    /* ── DASHBOARD PAGE ── */
+    #dashboard-page { flex-direction: row; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px; min-height: 100vh; background: var(--ink);
+      padding: 28px 20px; display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 50; transition: transform 0.3s;
+    }
+    .sidebar-logo {
+      font-family: var(--display); font-size: 1.6rem;
+      color: var(--paper); letter-spacing: -0.02em;
+      margin-bottom: 36px; padding-left: 8px;
+    }
+    .sidebar-logo span { color: var(--blush); }
+    .nav-section-label {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: rgba(255,255,255,0.3);
+      padding: 0 8px; margin-bottom: 8px; margin-top: 20px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px;
+      color: rgba(255,255,255,0.6); font-size: 0.9rem;
+      cursor: pointer; margin-bottom: 2px;
+      transition: background 0.15s, color 0.15s; border: none;
+      background: transparent; width: 100%; text-align: left;
+      font-family: var(--body);
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); }
+    .nav-item.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 500; }
+    .nav-item .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-bottom { margin-top: auto; }
+    .user-pill {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 12px;
+      background: rgba(255,255,255,0.07); margin-bottom: 8px;
+    }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--blush); display: flex; align-items: center;
+      justify-content: center; font-size: 0.8rem; font-weight: 600; color: #fff;
+      flex-shrink: 0;
+    }
+    .user-email { font-size: 0.78rem; color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .btn-signout {
+      width: 100%; padding: 9px; border-radius: 10px;
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5);
+      border: none; font-family: var(--body); font-size: 0.82rem;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .btn-signout:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
+
+    /* Main content */
+    .main-content { margin-left: 240px; flex: 1; padding: 36px 40px; min-height: 100vh; }
+
+    /* Top bar */
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+    .topbar h1 { font-family: var(--display); font-size: 1.9rem; letter-spacing: -0.02em; }
+    .topbar-date { font-size: 0.82rem; color: var(--muted); }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Welcome banner */
+    .welcome-banner {
+      background: var(--ink); border-radius: 20px;
+      padding: 32px 36px; margin-bottom: 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 20px;
+    }
+    .welcome-banner h2 { font-family: var(--display); font-size: 1.6rem; color: var(--paper); letter-spacing: -0.02em; margin-bottom: 6px; }
+    .welcome-banner p { color: rgba(255,255,255,0.55); font-size: 0.9rem; max-width: 400px; }
+    .welcome-emoji { font-size: 3rem; }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 16px;
+      padding: 22px 20px;
+    }
+    .stat-card .stat-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+    .stat-card .stat-value { font-family: var(--display); font-size: 2rem; letter-spacing: -0.02em; }
+    .stat-card .stat-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+    /* Quick actions */
+    .section-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 16px; color: var(--ink); }
+    .quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .quick-card {
+      background: var(--warm); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px 18px; cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .quick-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
+    .quick-card .q-icon { font-size: 1.6rem; margin-bottom: 10px; }
+    .quick-card h3 { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+    .quick-card p { font-size: 0.78rem; color: var(--muted); }
+
+    /* Mood tracker */
+    .mood-section { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 28px; }
+    .mood-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .mood-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 12px 16px; border-radius: 12px; border: 1.5px solid var(--border);
+      background: var(--warm); cursor: pointer; font-family: var(--body);
+      font-size: 0.75rem; color: var(--muted); transition: all 0.15s;
+    }
+    .mood-btn .m-emoji { font-size: 1.5rem; }
+    .mood-btn:hover { border-color: var(--peach); background: #fff; }
+    .mood-btn.selected { border-color: var(--blush); background: rgba(212,113,142,0.08); color: var(--blush); font-weight: 500; }
+
+    /* Journal */
+    .journal-area { width: 100%; padding: 16px; border: 1.5px solid var(--border); border-radius: 14px; font-family: var(--body); font-size: 0.95rem; color: var(--ink); background: var(--paper); resize: vertical; min-height: 160px; outline: none; transition: border-color 0.2s; }
+    .journal-area:focus { border-color: var(--peach); }
+    .journal-entries { margin-top: 24px; }
+    .journal-entry { background: var(--warm); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; }
+    .journal-entry .entry-date { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+    .journal-entry .entry-mood { font-size: 0.8rem; margin-bottom: 8px; }
+    .journal-entry .entry-text { font-size: 0.9rem; line-height: 1.65; }
+
+    /* GPA */
+    .gpa-big { font-family: var(--display); font-size: 4rem; letter-spacing: -0.03em; color: var(--blush); }
+    .subject-list { margin-top: 20px; }
+    .subject-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .subject-row:last-child { border-bottom: none; }
+    .subject-name { flex: 1; font-size: 0.9rem; font-weight: 500; }
+    .subject-grade { font-size: 0.85rem; color: var(--muted); width: 60px; text-align: center; }
+    .subject-points { font-family: var(--display); font-size: 1.1rem; color: var(--blush); width: 40px; text-align: right; }
+    .btn-add-subject {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 18px; border-radius: 100px;
+      background: var(--warm); border: 1.5px solid var(--border);
+      font-family: var(--body); font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; color: var(--ink); transition: all 0.15s; margin-top: 16px;
+    }
+    .btn-add-subject:hover { border-color: var(--blush); background: rgba(212,113,142,0.07); }
+
+    /* Tasks */
+    .task-input-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .task-input { flex: 1; padding: 11px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-family: var(--body); font-size: 0.9rem; color: var(--ink); background: var(--paper); outline: none; }
+    .task-input:focus { border-color: var(--peach); }
+    .btn-add-task {
+      padding: 11px 20px; border-radius: 12px; background: var(--blush);
+      color: #fff; border: none; font-family: var(--body); font-size: 0.875rem;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .btn-add-task:hover { background: #c45d7a; }
+    .task-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: 12px;
+      border: 1px solid var(--border); background: #fff;
+      margin-bottom: 8px; transition: opacity 0.2s;
+    }
+    .task-item.done-task { opacity: 0.5; }
+    .task-check {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid var(--border); flex-shrink: 0;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all 0.15s;
+    }
+    .task-check.checked { background: var(--sage); border-color: var(--sage); color: #fff; font-size: 0.7rem; }
+    .task-item.done-task .task-text { text-decoration: line-through; color: var(--muted); }
+    .task-text { flex: 1; font-size: 0.9rem; }
+    .task-deadline { font-size: 0.75rem; color: var(--muted); }
+    .task-delete { background: none; border: none; color: #ccc; cursor: pointer; font-size: 1rem; padding: 2px 6px; border-radius: 6px; transition: color 0.15s; }
+    .task-delete:hover { color: #e11d48; }
+
+    /* Chatbot */
+    .chat-window {
+      background: var(--warm); border: 1px solid var(--border);
+      border-radius: 18px; height: 420px; overflow-y: auto;
+      padding: 20px; margin-bottom: 16px; display: flex;
+      flex-direction: column; gap: 14px;
+      scroll-behavior: smooth;
+    }
+    .chat-msg { display: flex; gap: 10px; align-items: flex-end; }
+    .chat-msg.user { flex-direction: row-reverse; }
+    .chat-bubble {
+      max-width: 75%; padding: 12px 16px; border-radius: 18px;
+      font-size: 0.9rem; line-height: 1.6;
+    }
+    .chat-msg.bot .chat-bubble { background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .chat-msg.user .chat-bubble { background: var(--blush); color: #fff; border-bottom-right-radius: 4px; }
+    .chat-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--lavender); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+    .chat-input-row { display: flex; gap: 10px; }
+    .chat-input { flex: 1; padding: 12px 18px; border: 1.5px solid var(--border); border-radius: 100px; font-family: var(--body); font-size: 0.9rem; color: var(--ink); background: #fff; outline: none; }
+    .chat-input:focus { border-color: var(--lavender); }
+    .btn-send {
+      padding: 12px 22px; border-radius: 100px; background: var(--lavender);
+      color: #fff; border: none; font-family: var(--body); font-size: 0.875rem;
+      font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-send:hover { background: #7a6fa8; }
+    .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chat-typing { display: flex; gap: 4px; padding: 12px 16px; background: #fff; border: 1px solid var(--border); border-radius: 18px; border-bottom-left-radius: 4px; width: fit-content; }
+    .chat-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: bounce 1s infinite; }
+    .chat-typing span:nth-child(2) { animation-delay: 0.15s; }
+    .chat-typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+    /* Premium gate */
+    .premium-gate {
+      background: var(--ink); border-radius: 18px;
+      padding: 36px 32px; text-align: center; margin-top: 20px;
+    }
+    .premium-gate h3 { font-family: var(--display); font-size: 1.5rem; color: var(--paper); margin-bottom: 10px; }
+    .premium-gate p { color: rgba(255,255,255,0.55); font-size: 0.9rem; margin-bottom: 24px; }
+    .btn-upgrade {
+      display: inline-block; padding: 13px 32px; border-radius: 100px;
+      background: var(--blush); color: #fff; border: none;
+      font-family: var(--body); font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: background 0.2s;
+      box-shadow: 0 4px 16px rgba(212,113,142,0.4);
+    }
+    .btn-upgrade:hover { background: #c45d7a; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 20px; padding: 32px;
+      width: 90%; max-width: 420px; position: relative;
+    }
+    .modal h3 { font-family: var(--display); font-size: 1.3rem; margin-bottom: 20px; }
+    .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); }
+    .btn-save {
+      width: 100%; padding: 12px; border-radius: 100px;
+      background: var(--blush); color: #fff; border: none;
+      font-family: var(--body); font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; margin-top: 6px; transition: background 0.15s;
+    }
+    .btn-save:hover { background: #c45d7a; }
+
+    /* Mobile sidebar toggle */
+    .hamburger { display: none; position: fixed; top: 16px; left: 16px; z-index: 100; background: var(--ink); border: none; border-radius: 10px; padding: 8px 10px; cursor: pointer; font-size: 1.1rem; color: #fff; }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; padding: 24px 20px; padding-top: 64px; }
+      .hamburger { display: block; }
+      .gpa-big { font-size: 3rem; }
+    }
+
+    /* Utils */
+    .flex { display: flex; }
+    .gap-12 { gap: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<!-- ── AUTH PAGE ─────────────────────────────────── -->
+<div id="auth-page" class="page active">
+  <div class="auth-card">
+    <div class="auth-logo">M<span>O</span>M</div>
+    <p class="auth-tagline">Mind Over Mess — your personal growth companion</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="switchTab('signup')">Create account</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+    <div id="auth-success" class="auth-success"></div>
+
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="login-email" class="form-input" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="login-password" class="form-input" placeholder="Your password" />
+      </div>
+      <button class="btn-auth" onclick="handleLogin()">Sign in</button>
+    </div>
+
+    <div id="signup-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Your name</label>
+        <input type="text" id="signup-name" class="form-input" placeholder="Akriti" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="signup-email" class="form-input" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="signup-password" class="form-input" placeholder="At least 6 characters" />
+      </div>
+      <button class="btn-auth" onclick="handleSignup()">Create my account</button>
+    </div>
+
+    <p class="auth-divider">Your data is private and secure 🔒</p>
+  </div>
+</div>
+
+<!-- ── DASHBOARD PAGE ─────────────────────────────── -->
+<div id="dashboard-page" class="page">
+
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">M<span>O</span>M</div>
+
+    <p class="nav-section-label">Overview</p>
+    <button class="nav-item active" onclick="showPanel('home')">
+      <span class="nav-icon">🏠</span> Home
+    </button>
+
+    <p class="nav-section-label">Mental Health</p>
+    <button class="nav-item" onclick="showPanel('mood')">
+      <span class="nav-icon">🧘</span> Mood & Journal
+    </button>
+    <button class="nav-item" onclick="showPanel('chat')">
+      <span class="nav-icon">💬</span> AI Companion
+    </button>
+
+    <p class="nav-section-label">Academics</p>
+    <button class="nav-item" onclick="showPanel('gpa')">
+      <span class="nav-icon">🎓</span> GPA Tracker
+    </button>
+    <button class="nav-item" onclick="showPanel('tasks')">
+      <span class="nav-icon">📋</span> Tasks
+    </button>
+
+    <p class="nav-section-label">Growth</p>
+    <button class="nav-item" onclick="showPanel('skills')">
+      <span class="nav-icon">🚀</span> Skills
+    </button>
+
+    <div class="sidebar-bottom">
+      <div class="user-pill">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-email" id="user-email-display">Loading...</div>
+      </div>
+      <button class="btn-signout" onclick="handleSignout()">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- HOME panel -->
+    <div class="panel active" id="panel-home">
+      <div class="topbar">
+        <div>
+          <h1 id="welcome-name">Welcome back 👋</h1>
+          <p class="topbar-date" id="today-date"></p>
+        </div>
+      </div>
+
+      <div class="welcome-banner">
+        <div>
+          <h2>How are you doing today?</h2>
+          <p>MOM is here to support your mind, your growth, and your studies — all in one place.</p>
+        </div>
+        <div class="welcome-emoji">🌸</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <p class="stat-label">Current GPA</p>
+          <div class="stat-value" id="home-gpa">—</div>
+          <p class="stat-sub">out of 10.0</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Tasks today</p>
+          <div class="stat-value" id="home-tasks">0</div>
+          <p class="stat-sub">pending</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Journal entries</p>
+          <div class="stat-value" id="home-entries">0</div>
+          <p class="stat-sub">this week</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Today's mood</p>
+          <div class="stat-value" id="home-mood">—</div>
+          <p class="stat-sub">tap to log</p>
+        </div>
+      </div>
+
+      <p class="section-title">Quick actions</p>
+      <div class="quick-grid">
+        <div class="quick-card" onclick="showPanel('mood')">
+          <div class="q-icon">📝</div>
+          <h3>Write in journal</h3>
+          <p>Reflect on your day</p>
+        </div>
+        <div class="quick-card" onclick="showPanel('chat')">
+          <div class="q-icon">🤖</div>
+          <h3>Talk to MOM AI</h3>
+          <p>Get support anytime</p>
+        </div>
+        <div class="quick-card" onclick="showPanel('gpa')">
+          <div class="q-icon">📊</div>
+          <h3>Update grades</h3>
+          <p>Track your GPA</p>
+        </div>
+        <div class="quick-card" onclick="showPanel('tasks')">
+          <div class="q-icon">✅</div>
+          <h3>Add a task</h3>
+          <p>Stay on top of deadlines</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOOD & JOURNAL panel -->
+    <div class="panel" id="panel-mood">
+      <div class="topbar"><h1>Mood & Journal</h1></div>
+
+      <div class="card">
+        <p class="section-title">How are you feeling right now?</p>
+        <div class="mood-grid">
+          <button class="mood-btn" onclick="selectMood(this,'😄','Amazing')"><span class="m-emoji">😄</span>Amazing</button>
+          <button class="mood-btn" onclick="selectMood(this,'😊','Good')"><span class="m-emoji">😊</span>Good</button>
+          <button class="mood-btn" onclick="selectMood(this,'😐','Okay')"><span class="m-emoji">😐</span>Okay</button>
+          <button class="mood-btn" onclick="selectMood(this,'😔','Low')"><span class="m-emoji">😔</span>Low</button>
+          <button class="mood-btn" onclick="selectMood(this,'😰','Anxious')"><span class="m-emoji">😰</span>Anxious</button>
+          <button class="mood-btn" onclick="selectMood(this,'😤','Stressed')"><span class="m-emoji">😤</span>Stressed</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="section-title">Today's journal</p>
+        <textarea class="journal-area" id="journal-text" placeholder="What's on your mind today? Write freely — this is just for you..."></textarea>
+        <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+          <button class="btn-save" style="width:auto;padding:10px 24px;" onclick="saveJournalEntry()">Save entry</button>
+        </div>
+      </div>
+
+      <div id="journal-entries-list"></div>
+    </div>
+
+    <!-- AI CHAT panel -->
+    <div class="panel" id="panel-chat">
+      <div class="topbar"><h1>AI Companion</h1></div>
+      <div class="card">
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">MOM AI is here to listen, support, and guide you — any time you need it. 💜</p>
+        <div class="chat-window" id="chat-window">
+          <div class="chat-msg bot">
+            <div class="chat-avatar">🤍</div>
+            <div class="chat-bubble">Hi there! I'm MOM — your personal companion. I'm here to listen and support you. How are you feeling today? 💜</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendChat()" />
+          <button class="btn-send" id="chat-send-btn" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GPA panel -->
+    <div class="panel" id="panel-gpa">
+      <div class="topbar"><h1>GPA Tracker</h1></div>
+
+      <div class="card">
+        <p class="section-title">Your current GPA</p>
+        <div class="gpa-big" id="gpa-display">—</div>
+        <p style="color:var(--muted);font-size:0.82rem;margin-top:6px;" id="gpa-sub">Add subjects below to calculate</p>
+
+        <div class="subject-list" id="subject-list"></div>
+
+        <button class="btn-add-subject" onclick="openSubjectModal()">
+          + Add subject
+        </button>
+      </div>
+    </div>
+
+    <!-- TASKS panel -->
+    <div class="panel" id="panel-tasks">
+      <div class="topbar"><h1>Tasks</h1></div>
+      <div class="card">
+        <div class="task-input-row">
+          <input type="text" class="task-input" id="task-input" placeholder="Add a task or assignment..." onkeydown="if(event.key==='Enter') addTask()" />
+          <input type="date" class="task-input" id="task-deadline" style="max-width:160px;" />
+          <button class="btn-add-task" onclick="addTask()">Add</button>
+        </div>
+        <div id="task-list"></div>
+      </div>
+    </div>
+
+    <!-- SKILLS panel -->
+    <div class="panel" id="panel-skills">
+      <div class="topbar"><h1>Skills</h1></div>
+      <div class="premium-gate">
+        <h3>Unlock your growth journey</h3>
+        <p>Skill paths, courses, and expert resources are available on MOM Premium.</p>
+        <button class="btn-upgrade">Upgrade to Premium — ₹299/month</button>
+      </div>
+      <div class="card mt-16">
+        <p class="section-title">Coming soon — free tier</p>
+        <div class="quick-grid" style="margin-bottom:0">
+          <div class="quick-card" style="cursor:default;opacity:0.6;">
+            <div class="q-icon">💻</div>
+            <h3>Coding basics</h3>
+            <p>HTML, CSS, Python intro</p>
+          </div>
+          <div class="quick-card" style="cursor:default;opacity:0.6;">
+            <div class="q-icon">🎨</div>
+            <h3>Creative skills</h3>
+            <p>Design, writing, content</p>
+          </div>
+          <div class="quick-card" style="cursor:default;opacity:0.6;">
+            <div class="q-icon">🧠</div>
+            <h3>Soft skills</h3>
+            <p>Leadership, communication</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Add subject modal -->
+<div class="modal-overlay" id="subject-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeSubjectModal()">✕</button>
+    <h3>Add subject</h3>
+    <div class="form-group">
+      <label class="form-label">Subject name</label>
+      <input type="text" id="subject-name" class="form-input" placeholder="e.g. Mathematics" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Grade / Marks (%)</label>
+      <input type="number" id="subject-marks" class="form-input" placeholder="e.g. 85" min="0" max="100" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Credits</label>
+      <input type="number" id="subject-credits" class="form-input" placeholder="e.g. 4" min="1" max="10" />
+    </div>
+    <button class="btn-save" onclick="addSubject()">Add subject</button>
+  </div>
+</div>
+
+<script>
+  // ── SUPABASE INIT ────────────────────────────────
+  const { createClient } = supabase;
+  const sb = createClient(
+    'https://mepishmnryfqdpmbkibe.supabase.co',
+    'sb_publishable_d81zbJl20ZJYoJYNPBTHOA_t_xzuylN'
+  );
+
+  // ── APP STATE ─────────────────────────────────────
+  let currentUser = null;
+  let selectedMood = null;
+  let journalEntries = JSON.parse(localStorage.getItem('mom_journal') || '[]');
+  let subjects = JSON.parse(localStorage.getItem('mom_subjects') || '[]');
+  let tasks = JSON.parse(localStorage.getItem('mom_tasks') || '[]');
+
+  // ── INIT ──────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', async () => {
+    setTodayDate();
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      showDashboard();
+    }
+    sb.auth.onAuthStateChange((_event, session) => {
+      currentUser = session?.user || null;
+      if (currentUser) showDashboard();
+      else showPage('auth-page');
+    });
+  });
+
+  function setTodayDate() {
+    const d = new Date();
+    const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+    const el = document.getElementById('today-date');
+    if (el) el.textContent = d.toLocaleDateString('en-IN', opts);
+  }
+
+  // ── AUTH ──────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+    clearAuthMessages();
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg; el.style.display = 'block';
+    document.getElementById('auth-success').style.display = 'none';
+  }
+  function showAuthSuccess(msg) {
+    const el = document.getElementById('auth-success');
+    el.textContent = msg; el.style.display = 'block';
+    document.getElementById('auth-error').style.display = 'none';
+  }
+  function clearAuthMessages() {
+    document.getElementById('auth-error').style.display = 'none';
+    document.getElementById('auth-success').style.display = 'none';
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return showAuthError('Please fill in all fields.');
+    const btn = event.target; btn.disabled = true; btn.textContent = 'Signing in...';
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { showAuthError(error.message); btn.disabled = false; btn.textContent = 'Sign in'; }
+  }
+
+  async function handleSignup() {
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    if (!name || !email || !password) return showAuthError('Please fill in all fields.');
+    if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
+    const btn = event.target; btn.disabled = true; btn.textContent = 'Creating account...';
+    const { error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
+    if (error) { showAuthError(error.message); btn.disabled = false; btn.textContent = 'Create my account'; }
+    else showAuthSuccess('Account created! Check your email to confirm, then sign in.');
+    btn.disabled = false; btn.textContent = 'Create my account';
+  }
+
+  async function handleSignout() {
+    await sb.auth.signOut();
+    showPage('auth-page');
+  }
+
+  // ── DASHBOARD ─────────────────────────────────────
+  function showDashboard() {
+    showPage('dashboard-page');
+    const name = currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'there';
+    document.getElementById('welcome-name').textContent = 'Welcome back, ' + name + ' 👋';
+    const avatar = document.getElementById('user-avatar');
+    avatar.textContent = name[0].toUpperCase();
+    document.getElementById('user-email-display').textContent = currentUser?.email || '';
+    refreshHomeStats();
+    renderTasks();
+    renderSubjects();
+    renderJournalEntries();
+  }
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+  }
+
+  function refreshHomeStats() {
+    document.getElementById('home-tasks').textContent = tasks.filter(t => !t.done).length;
+    document.getElementById('home-entries').textContent = journalEntries.length;
+    const gpa = calcGPA();
+    document.getElementById('home-gpa').textContent = gpa > 0 ? gpa.toFixed(1) : '—';
+    document.getElementById('gpa-display').textContent = gpa > 0 ? gpa.toFixed(2) : '—';
+    if (gpa > 0) document.getElementById('gpa-sub').textContent = subjects.length + ' subjects tracked';
+  }
+
+  // ── MOOD ─────────────────────────────────────────
+  function selectMood(btn, emoji, label) {
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedMood = { emoji, label };
+    document.getElementById('home-mood').textContent = emoji;
+    localStorage.setItem('mom_today_mood', JSON.stringify({ emoji, label, date: new Date().toDateString() }));
+  }
+
+  // ── JOURNAL ───────────────────────────────────────
+  function saveJournalEntry() {
+    const text = document.getElementById('journal-text').value.trim();
+    if (!text) return;
+    const entry = {
+      id: Date.now(),
+      text,
+      mood: selectedMood,
+      date: new Date().toISOString()
+    };
+    journalEntries.unshift(entry);
+    localStorage.setItem('mom_journal', JSON.stringify(journalEntries));
+    document.getElementById('journal-text').value = '';
+    renderJournalEntries();
+    refreshHomeStats();
+  }
+
+  function renderJournalEntries() {
+    const container = document.getElementById('journal-entries-list');
+    if (!journalEntries.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📖</div><p>No entries yet — write your first one above.</p></div>';
+      return;
+    }
+    container.innerHTML = '<p class="section-title">Past entries</p>' + journalEntries.map(e => `
+      <div class="journal-entry">
+        <div class="entry-date">${new Date(e.date).toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long'})}</div>
+        ${e.mood ? `<div class="entry-mood">${e.mood.emoji} ${e.mood.label}</div>` : ''}
+        <div class="entry-text">${e.text}</div>
+      </div>
+    `).join('');
+  }
+
+  // ── AI CHAT ───────────────────────────────────────
+  const chatHistory = [
+    { role: 'user', content: 'You are MOM — Mind Over Mess — a warm, empathetic AI mental health and study companion for students. You give supportive, thoughtful responses. Keep responses concise (2-4 sentences). You are not a therapist but you care deeply. Start the conversation warmly.' }
+  ];
+
+  async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+
+    appendChatMsg('user', msg);
+    chatHistory.push({ role: 'user', content: msg });
+
+    const btn = document.getElementById('chat-send-btn');
+    btn.disabled = true;
+    appendTyping();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: chatHistory.filter(m => m.role !== 'system').slice(-10)
+        })
+      });
+      const data = await res.json();
+      const reply = data.reply || "I'm here for you. Tell me more about how you're feeling.";
+      removeTyping();
+      appendChatMsg('bot', reply);
+      chatHistory.push({ role: 'assistant', content: reply });
+    } catch {
+      removeTyping();
+      appendChatMsg('bot', "I'm having a little trouble connecting right now. But I'm here — try again in a moment 💜");
+    }
+    btn.disabled = false;
+  }
+
+  function appendChatMsg(role, text) {
+    const win = document.getElementById('chat-window');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
+    div.innerHTML = role === 'bot'
+      ? `<div class="chat-avatar">🤍</div><div class="chat-bubble">${text}</div>`
+      : `<div class="chat-bubble">${text}</div>`;
+    win.appendChild(div);
+    win.scrollTop = win.scrollHeight;
+  }
+
+  function appendTyping() {
+    const win = document.getElementById('chat-window');
+    const div = document.createElement('div');
+    div.className = 'chat-msg bot'; div.id = 'typing-indicator';
+    div.innerHTML = `<div class="chat-avatar">🤍</div><div class="chat-typing"><span></span><span></span><span></span></div>`;
+    win.appendChild(div);
+    win.scrollTop = win.scrollHeight;
+  }
+  function removeTyping() {
+    const el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+  }
+
+  // ── GPA ───────────────────────────────────────────
+  function calcGPA() {
+    if (!subjects.length) return 0;
+    const totalCredits = subjects.reduce((s, sub) => s + sub.credits, 0);
+    const weightedPoints = subjects.reduce((s, sub) => s + (sub.gradePoints * sub.credits), 0);
+    return totalCredits > 0 ? weightedPoints / totalCredits : 0;
+  }
+
+  function marksToGradePoints(marks) {
+    if (marks >= 90) return 10;
+    if (marks >= 80) return 9;
+    if (marks >= 70) return 8;
+    if (marks >= 60) return 7;
+    if (marks >= 50) return 6;
+    if (marks >= 40) return 5;
+    return 0;
+  }
+
+  function openSubjectModal() { document.getElementById('subject-modal').classList.add('open'); }
+  function closeSubjectModal() { document.getElementById('subject-modal').classList.remove('open'); }
+
+  function addSubject() {
+    const name = document.getElementById('subject-name').value.trim();
+    const marks = parseFloat(document.getElementById('subject-marks').value);
+    const credits = parseInt(document.getElementById('subject-credits').value);
+    if (!name || isNaN(marks) || isNaN(credits)) return;
+    subjects.push({ id: Date.now(), name, marks, credits, gradePoints: marksToGradePoints(marks) });
+    localStorage.setItem('mom_subjects', JSON.stringify(subjects));
+    closeSubjectModal();
+    document.getElementById('subject-name').value = '';
+    document.getElementById('subject-marks').value = '';
+    document.getElementById('subject-credits').value = '';
+    renderSubjects();
+    refreshHomeStats();
+  }
+
+  function renderSubjects() {
+    const list = document.getElementById('subject-list');
+    if (!subjects.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><p>No subjects added yet.</p></div>';
+      return;
+    }
+    list.innerHTML = subjects.map(s => `
+      <div class="subject-row">
+        <div class="subject-name">${s.name}</div>
+        <div class="subject-grade">${s.marks}%</div>
+        <div class="subject-points">${s.gradePoints}</div>
+        <button onclick="deleteSubject(${s.id})" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:0.9rem;padding:4px 8px;border-radius:6px;" onmouseover="this.style.color='#e11d48'" onmouseout="this.style.color='#ccc'">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function deleteSubject(id) {
+    subjects = subjects.filter(s => s.id !== id);
+    localStorage.setItem('mom_subjects', JSON.stringify(subjects));
+    renderSubjects();
+    refreshHomeStats();
+  }
+
+  // ── TASKS ─────────────────────────────────────────
+  function addTask() {
+    const text = document.getElementById('task-input').value.trim();
+    const deadline = document.getElementById('task-deadline').value;
+    if (!text) return;
+    tasks.unshift({ id: Date.now(), text, deadline, done: false });
+    localStorage.setItem('mom_tasks', JSON.stringify(tasks));
+    document.getElementById('task-input').value = '';
+    document.getElementById('task-deadline').value = '';
+    renderTasks();
+    refreshHomeStats();
+  }
+
+  function toggleTask(id) {
+    tasks = tasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    localStorage.setItem('mom_tasks', JSON.stringify(tasks));
+    renderTasks();
+    refreshHomeStats();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    localStorage.setItem('mom_tasks', JSON.stringify(tasks));
+    renderTasks();
+    refreshHomeStats();
+  }
+
+  function renderTasks() {
+    const list = document.getElementById('task-list');
+    if (!tasks.length) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>No tasks yet — add one above.</p></div>';
+      return;
+    }
+    list.innerHTML = tasks.map(t => `
+      <div class="task-item ${t.done ? 'done-task' : ''}">
+        <div class="task-check ${t.done ? 'checked' : ''}" onclick="toggleTask(${t.id})">${t.done ? '✓' : ''}</div>
+        <span class="task-text">${t.text}</span>
+        ${t.deadline ? `<span class="task-deadline">📅 ${new Date(t.deadline).toLocaleDateString('en-IN', {day:'numeric',month:'short'})}</span>` : ''}
+        <button class="task-delete" onclick="deleteTask(${t.id})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  // ── ENTER key on auth inputs ───────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (document.getElementById('login-form').style.display !== 'none') handleLogin();
+    }
+  });
+</script>
+</body>
+</html>
