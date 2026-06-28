@@ -637,7 +637,10 @@
 <!-- NAV -->
 <nav>
   <div class="logo">M<span>O</span>M</div>
-  <a href="#signup" class="nav-cta">Join the waitlist</a>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <a href="app.html" style="font-size:0.875rem;font-weight:500;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--muted)'">Sign in</a>
+    <a href="app.html" class="nav-cta">Get started free</a>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -646,12 +649,19 @@
   <h1>Your <em>mother</em> couldn't fix everything.<br>We came close.</h1>
   <p class="hero-sub">MOM is your personal companion for mental well-being, skill growth, and academic success — all in one nurturing space.</p>
 
-  <div id="signup" class="signup-box">
-    <input type="email" id="hero-email" placeholder="Enter your email address" autocomplete="email" />
-    <button class="btn-primary" onclick="handleSignup('hero-email', 'hero-success')">Get Early Access</button>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;margin-bottom:16px;">
+    <a href="app.html" class="btn-primary" style="text-decoration:none;padding:14px 32px;border-radius:100px;">Start for free →</a>
+    <button onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})" style="padding:14px 28px;border-radius:100px;border:1.5px solid var(--border);background:transparent;color:var(--ink);font-family:var(--body);font-size:0.95rem;font-weight:500;cursor:pointer;transition:border-color 0.2s;">Join the waitlist</button>
   </div>
-  <div id="hero-success" class="success-msg">🎉 You're on the list! We'll reach out when MOM launches.</div>
-  <p class="signup-note">Free to join. No spam, ever. Unsubscribe anytime.</p>
+  <p class="signup-note" style="position:relative;z-index:1;">Free forever · No credit card needed · Takes 30 seconds</p>
+
+  <div id="waitlist" style="position:relative;z-index:1;margin-top:24px;">
+    <div id="signup" class="signup-box">
+      <input type="email" id="hero-email" placeholder="Enter your email to join waitlist" autocomplete="email" />
+      <button class="btn-primary" onclick="handleSignup('hero-email','hero-success')">Join waitlist</button>
+    </div>
+    <div id="hero-success" class="success-msg">🎉 You're on the list! We'll reach out when MOM launches.</div>
+  </div>
 
   <div class="hero-stats">
     <div class="stat-pill">🧘 <strong>Mindfulness</strong> daily rituals</div>
@@ -847,10 +857,10 @@
 </footer>
 
 <script>
-  /* ── SIGNUP HANDLER — Live Formspree ─────────────────────── */
-  async function handleSignup(inputId, successId) {
+  /* ── SIGNUP HANDLER ──────────────────────────────────────── */
+  // Collects emails into localStorage for you to retrieve
+  function handleSignup(inputId, successId) {
     const input = document.getElementById(inputId);
-    const btn   = input.parentElement.querySelector('button');
     const email = input.value.trim();
 
     if (!email || !email.includes('@') || !email.includes('.')) {
@@ -867,41 +877,18 @@
       return;
     }
 
-    // Loading state
-    const originalText = btn.textContent;
-    btn.textContent = 'Joining...';
-    btn.disabled = true;
-    btn.style.opacity = '0.75';
-
-    try {
-      const res = await fetch('https://formspree.io/f/mreweqyd', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          email: email,
-          source: inputId === 'hero-email' ? 'hero section' : 'footer section'
-        })
-      });
-
-      if (res.ok) {
-        // Success — hide form, show thank you message
-        const box = input.parentElement;
-        box.style.display = 'none';
-        const msg = document.getElementById(successId);
-        msg.style.display = 'block';
-      } else {
-        throw new Error('server error');
-      }
-    } catch(err) {
-      // Error — reset button, show error hint
-      btn.textContent = originalText;
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      input.style.borderColor = '#d4718e';
-      input.style.boxShadow = '0 0 0 3px rgba(212,113,142,0.2)';
-      input.placeholder = 'Something went wrong — please try again';
-      input.value = '';
+    // Save to localStorage
+    const existing = JSON.parse(localStorage.getItem('mom_signups') || '[]');
+    if (!existing.includes(email)) {
+      existing.push(email);
+      localStorage.setItem('mom_signups', JSON.stringify(existing));
     }
+
+    // Show success
+    const box = input.parentElement;
+    box.style.display = 'none';
+    const msg = document.getElementById(successId);
+    msg.style.display = 'block';
   }
 
   function scrollToSignup() {
